@@ -24,8 +24,11 @@ import feast.proto.serving.ServingAPIProto.FeastServingType;
 import feast.proto.serving.ServingAPIProto.FeatureReferenceV2;
 import feast.proto.serving.ServingAPIProto.GetFeastServingInfoRequest;
 import feast.proto.serving.ServingAPIProto.GetFeastServingInfoResponse;
+import feast.proto.serving.ServingAPIProto.GetInferenceResponse;
 import feast.proto.serving.ServingAPIProto.GetOnlineFeaturesRequestV2;
 import feast.proto.serving.ServingAPIProto.GetOnlineFeaturesResponse;
+import feast.proto.serving.ServingAPIProto.OnlineModelRunRequest;
+import feast.proto.serving.ServingAPIProto.Pong;
 import feast.proto.types.ValueProto;
 import feast.serving.exception.SpecRetrievalException;
 import feast.serving.specs.CachedSpecService;
@@ -47,6 +50,7 @@ public class OnlineServingServiceV2 implements ServingServiceV2 {
   private final CachedSpecService specService;
   private final Tracer tracer;
   private final OnlineRetrieverV2 retriever;
+  private final OnlineServicePluginsV1 plugins;
 
   private static final HashMap<ValueProto.ValueType.Enum, ValueProto.Value.ValCase>
       TYPE_TO_VAL_CASE =
@@ -70,8 +74,12 @@ public class OnlineServingServiceV2 implements ServingServiceV2 {
           };
 
   public OnlineServingServiceV2(
-      OnlineRetrieverV2 retriever, CachedSpecService specService, Tracer tracer) {
+      OnlineRetrieverV2 retriever,
+      OnlineServicePluginsV1 plugins,
+      CachedSpecService specService,
+      Tracer tracer) {
     this.retriever = retriever;
+    this.plugins = plugins;
     this.specService = specService;
     this.tracer = tracer;
   }
@@ -364,5 +372,15 @@ public class OnlineServingServiceV2 implements ServingServiceV2 {
             Metrics.requestFeatureCount
                 .labels(project, FeatureV2.getFeatureStringRef(featureReference))
                 .inc());
+  }
+
+  @Override
+  public Pong ping() {
+    return plugins.ping();
+  }
+
+  @Override
+  public GetInferenceResponse modelRun(OnlineModelRunRequest modelRunRequest) {
+    return plugins.modelRun(modelRunRequest);
   }
 }

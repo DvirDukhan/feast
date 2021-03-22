@@ -17,10 +17,20 @@
 package feast.storage.connectors.redis.retriever;
 
 import io.lettuce.core.*;
+import io.lettuce.core.output.CommandOutput;
+import io.lettuce.core.protocol.CommandArgs;
+import io.lettuce.core.protocol.ProtocolKeyword;
 import java.util.List;
 
 public interface RedisClientAdapter {
   RedisFuture<List<KeyValue<byte[], byte[]>>> hmget(byte[] key, byte[]... fields);
 
   void flushCommands();
+
+  <T> RedisFuture<T> dispatch(
+      ProtocolKeyword type,
+      CommandOutput<byte[], byte[], T> output,
+      CommandArgs<byte[], byte[]> args);
+
+  <T> RedisFuture<T> dispatch(ProtocolKeyword type, CommandOutput<byte[], byte[], T> output);
 }

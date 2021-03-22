@@ -19,7 +19,9 @@ package feast.serving.config;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.protobuf.InvalidProtocolBufferException;
 import feast.proto.core.StoreProto;
+import feast.serving.service.OnlineServicePluginsV1;
 import feast.serving.service.OnlineServingServiceV2;
+import feast.serving.service.OnlineStorePlugins;
 import feast.serving.service.ServingServiceV2;
 import feast.serving.specs.CachedSpecService;
 import feast.storage.api.retriever.OnlineRetrieverV2;
@@ -46,12 +48,19 @@ public class ServingServiceConfigV2 {
         RedisClientAdapter redisClusterClient =
             RedisClusterClient.create(store.toProto().getRedisClusterConfig());
         OnlineRetrieverV2 redisClusterRetriever = new OnlineRetriever(redisClusterClient);
-        servingService = new OnlineServingServiceV2(redisClusterRetriever, specService, tracer);
+        OnlineServicePluginsV1 redisClusterPlugin =
+            new OnlineStorePlugins(redisClusterClient, tracer, specService);
+        servingService =
+            new OnlineServingServiceV2(
+                redisClusterRetriever, redisClusterPlugin, specService, tracer);
         break;
       case REDIS:
         RedisClientAdapter redisClient = RedisClient.create(store.toProto().getRedisConfig());
         OnlineRetrieverV2 redisRetriever = new OnlineRetriever(redisClient);
-        servingService = new OnlineServingServiceV2(redisRetriever, specService, tracer);
+        OnlineServicePluginsV1 redisPlugin =
+            new OnlineStorePlugins(redisClient, tracer, specService);
+        servingService =
+            new OnlineServingServiceV2(redisRetriever, redisPlugin, specService, tracer);
         break;
       case UNRECOGNIZED:
       case INVALID:

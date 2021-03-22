@@ -23,6 +23,9 @@ import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.codec.ByteArrayCodec;
+import io.lettuce.core.output.CommandOutput;
+import io.lettuce.core.protocol.CommandArgs;
+import io.lettuce.core.protocol.ProtocolKeyword;
 import java.util.List;
 
 public class RedisClient implements RedisClientAdapter {
@@ -57,5 +60,19 @@ public class RedisClient implements RedisClientAdapter {
         io.lettuce.core.RedisClient.create(uri).connect(new ByteArrayCodec());
 
     return new RedisClient(connection);
+  }
+
+  @Override
+  public <T> RedisFuture<T> dispatch(
+      ProtocolKeyword type,
+      CommandOutput<byte[], byte[], T> output,
+      CommandArgs<byte[], byte[]> args) {
+    return asyncCommands.dispatch(type, output, args);
+  }
+
+  @Override
+  public <T> RedisFuture<T> dispatch(
+      ProtocolKeyword type, CommandOutput<byte[], byte[], T> output) {
+    return asyncCommands.dispatch(type, output);
   }
 }

@@ -20,7 +20,7 @@ import feast.proto.serving.ServingAPIProto;
 import feast.proto.serving.ServingAPIProto.GetOnlineFeaturesRequestV2;
 import feast.proto.serving.ServingAPIProto.GetOnlineFeaturesResponse;
 
-public interface ServingServiceV2 {
+public interface ServingServiceV2 extends OnlineServicePluginsV1 {
   /**
    * Get information about the Feast serving deployment.
    *

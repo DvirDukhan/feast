@@ -75,7 +75,7 @@ from feast.loaders.ingest import (
     _write_non_partitioned_table_from_source,
     _write_partitioned_table_from_source,
 )
-from feast.online_response import OnlineResponse, _infer_online_entity_rows
+from feast.online_response import OnlineResponse, _infer_online_entity_rows, _infer_online_modelrun_entity_rows
 from feast.pyspark.abc import RetrievalJob, SparkJob
 from feast.pyspark.launcher import (
     get_job_by_id,
@@ -95,6 +95,9 @@ from feast.remote_job import (
 from feast.serving.ServingService_pb2 import (
     GetFeastServingInfoRequest,
     GetOnlineFeaturesRequestV2,
+    OnlineModelRunRequest,
+    GetInferenceResponse
+    
 )
 from feast.serving.ServingService_pb2_grpc import ServingServiceStub
 from feast.staging.entities import (
@@ -103,6 +106,8 @@ from feast.staging.entities import (
     table_reference_from_string,
 )
 from feast.telemetry import log_usage
+
+from google.protobuf.empty_pb2 import Empty
 
 _logger = logging.getLogger(__name__)
 
@@ -1023,6 +1028,48 @@ class Client:
 
         response = OnlineResponse(response)
         return response
+
+    def get_model_run(
+        self,
+        model_name: str,
+        feature_refs: List[str],
+        entity_rows: List[Dict[str, Any]],
+        outputs: List[str],
+        project: Optional[str] = None,
+    ) -> OnlineResponse:
+        try:
+            response = self._serving_service.OnlineModelRun(
+                OnlineModelRunRequest(
+                    model_name = model_name,
+                    features=_build_feature_references(feature_ref_strs=feature_refs),
+                    entity_rows=_infer_online_modelrun_entity_rows(entity_rows),
+                    outputs = outputs,
+                    project=project if project is not None else self.project,
+                ),
+                timeout=self._config.getint(opt.GRPC_CONNECTION_TIMEOUT),
+                metadata=self._get_grpc_metadata(),
+            )
+        except grpc.RpcError as e:
+            raise grpc.RpcError(e.details())
+
+        response = OnlineResponse(response)
+        return response
+
+    def ping(self)->str:
+        # if self._telemetry_enabled:
+        #     if self._telemetry_counter["ping"] % 1000 == 0:
+        #         log_usage(
+        #             "ping",
+        #             self._telemetry_id,
+        #             datetime.utcnow(),
+        #             self.version(),
+        #         )
+        #     self._telemetry_counter["ping"] += 1
+        try:
+            response = self._serving_service.Ping(Empty())
+        except grpc.RpcError as e:
+            raise grpc.RpcError(e.details())
+        return response.val
 
     def get_historical_features(
         self,

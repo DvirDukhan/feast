@@ -21,7 +21,9 @@ import feast.common.logging.interceptors.GrpcMessageInterceptor;
 import feast.proto.serving.ServingAPIProto;
 import feast.proto.serving.ServingAPIProto.GetFeastServingInfoRequest;
 import feast.proto.serving.ServingAPIProto.GetFeastServingInfoResponse;
+import feast.proto.serving.ServingAPIProto.GetInferenceResponse;
 import feast.proto.serving.ServingAPIProto.GetOnlineFeaturesResponse;
+import feast.proto.serving.ServingAPIProto.Pong;
 import feast.proto.serving.ServingServiceGrpc.ServingServiceImplBase;
 import feast.serving.config.FeastProperties;
 import feast.serving.exception.SpecRetrievalException;
@@ -94,6 +96,52 @@ public class ServingServiceGRpcController extends ServingServiceImplBase {
         span.finish();
       }
       responseObserver.onNext(onlineFeatures);
+      responseObserver.onCompleted();
+    } catch (SpecRetrievalException e) {
+      log.error("Failed to retrieve specs in SpecService", e);
+      responseObserver.onError(
+          Status.NOT_FOUND.withDescription(e.getMessage()).withCause(e).asException());
+    } catch (AccessDeniedException e) {
+      log.info(String.format("User prevented from accessing one of the projects in request"));
+      responseObserver.onError(
+          Status.PERMISSION_DENIED
+              .withDescription(e.getMessage())
+              .withCause(e)
+              .asRuntimeException());
+    } catch (Exception e) {
+      log.warn("Failed to get Online Features", e);
+      responseObserver.onError(e);
+    }
+  }
+
+  @Override
+  public void ping(
+      com.google.protobuf.Empty request,
+      io.grpc.stub.StreamObserver<feast.proto.serving.ServingAPIProto.Pong> responseObserver) {
+    Pong pong = servingServiceV2.ping();
+    responseObserver.onNext(pong);
+    responseObserver.onCompleted();
+  }
+
+  @Override
+  public void onlineModelRun(
+      feast.proto.serving.ServingAPIProto.OnlineModelRunRequest request,
+      io.grpc.stub.StreamObserver<feast.proto.serving.ServingAPIProto.GetInferenceResponse>
+          responseObserver) {
+    try {
+      // authorize for the project in request object.
+      if (request.getProject() != null && !request.getProject().isEmpty()) {
+        // project set at root level overrides the project set at feature table level
+        this.authorizationService.authorizeRequest(
+            SecurityContextHolder.getContext(), request.getProject());
+      }
+      RequestHelper.validateOnlineInferenceRequest(request);
+      Span span = tracer.buildSpan("getOnlineFeaturesV2").start();
+      GetInferenceResponse inferenceResponse = servingServiceV2.modelRun(request);
+      if (span != null) {
+        span.finish();
+      }
+      responseObserver.onNext(inferenceResponse);
       responseObserver.onCompleted();
     } catch (SpecRetrievalException e) {
       log.error("Failed to retrieve specs in SpecService", e);

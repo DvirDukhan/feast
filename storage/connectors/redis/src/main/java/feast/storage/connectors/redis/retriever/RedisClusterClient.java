@@ -27,6 +27,9 @@ import io.lettuce.core.cluster.ClusterTopologyRefreshOptions;
 import io.lettuce.core.cluster.api.StatefulRedisClusterConnection;
 import io.lettuce.core.cluster.api.async.RedisAdvancedClusterAsyncCommands;
 import io.lettuce.core.codec.ByteArrayCodec;
+import io.lettuce.core.output.CommandOutput;
+import io.lettuce.core.protocol.CommandArgs;
+import io.lettuce.core.protocol.ProtocolKeyword;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -136,5 +139,19 @@ public class RedisClusterClient implements RedisClientAdapter {
     }
 
     return builder.build();
+  }
+
+  @Override
+  public <T> RedisFuture<T> dispatch(
+      ProtocolKeyword type,
+      CommandOutput<byte[], byte[], T> output,
+      CommandArgs<byte[], byte[]> args) {
+    return asyncCommands.dispatch(type, output, args);
+  }
+
+  @Override
+  public <T> RedisFuture<T> dispatch(
+      ProtocolKeyword type, CommandOutput<byte[], byte[], T> output) {
+    return asyncCommands.dispatch(type, output);
   }
 }

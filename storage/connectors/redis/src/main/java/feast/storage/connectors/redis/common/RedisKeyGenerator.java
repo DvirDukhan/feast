@@ -37,6 +37,16 @@ public class RedisKeyGenerator {
     return redisKeys;
   }
 
+  public static List<RedisProto.RedisKeyV2> buildInferenceRedisKeys(
+      String project, List<ServingAPIProto.OnlineModelRunRequest.EntityRow> entityRows) {
+    List<RedisProto.RedisKeyV2> redisKeys =
+        entityRows.stream()
+            .map(entityRow -> makeInferenceRedisKey(project, entityRow))
+            .collect(Collectors.toList());
+
+    return redisKeys;
+  }
+
   /**
    * Create {@link RedisProto.RedisKeyV2}
    *
@@ -46,6 +56,22 @@ public class RedisKeyGenerator {
    */
   private static RedisProto.RedisKeyV2 makeRedisKey(
       String project, ServingAPIProto.GetOnlineFeaturesRequestV2.EntityRow entityRow) {
+    RedisProto.RedisKeyV2.Builder builder = RedisProto.RedisKeyV2.newBuilder().setProject(project);
+    Map<String, ValueProto.Value> fieldsMap = entityRow.getFieldsMap();
+    List<String> entityNames = new ArrayList<>(new HashSet<>(fieldsMap.keySet()));
+
+    // Sort entity names by alphabetical order
+    entityNames.sort(String::compareTo);
+
+    for (String entityName : entityNames) {
+      builder.addEntityNames(entityName);
+      builder.addEntityValues(fieldsMap.get(entityName));
+    }
+    return builder.build();
+  }
+
+  private static RedisProto.RedisKeyV2 makeInferenceRedisKey(
+      String project, ServingAPIProto.OnlineModelRunRequest.EntityRow entityRow) {
     RedisProto.RedisKeyV2.Builder builder = RedisProto.RedisKeyV2.newBuilder().setProject(project);
     Map<String, ValueProto.Value> fieldsMap = entityRow.getFieldsMap();
     List<String> entityNames = new ArrayList<>(new HashSet<>(fieldsMap.keySet()));
