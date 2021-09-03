@@ -115,7 +115,7 @@ class Registry:
                     module_name, class_name, "RegistryStore"
                 )
 
-                self._registry_store = cls(registry_config, repo_path)
+                self._registry_store = cls(registry_config.path)
         self.cached_registry_proto_ttl = timedelta(
             seconds=registry_config.cache_ttl_seconds
             if registry_config.cache_ttl_seconds is not None
